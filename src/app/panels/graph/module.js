@@ -161,13 +161,17 @@ function (angular, app, $, _, kbn, moment, TimeSeries, PanelMeta) {
       $scope.datapointsOutside = false;
 
       $scope.seriesList = _.map(results.data, $scope.seriesHandler);
+      $scope.seriesList.annotations = [];
+      if (results.annotations) {
+        $scope.seriesList.annotations = _.union($scope.seriesList.annotations, results.annotations);
+      }
 
       $scope.datapointsWarning = $scope.datapointsCount === 0 || $scope.datapointsOutside;
 
       $scope.annotationsPromise
         .then(function(annotations) {
           $scope.panelMeta.loading = false;
-          $scope.seriesList.annotations = annotations;
+          $scope.seriesList.annotations = _.union($scope.seriesList.annotations, annotations);
           $scope.render($scope.seriesList);
         }, function() {
           $scope.panelMeta.loading = false;

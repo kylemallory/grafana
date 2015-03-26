@@ -317,6 +317,7 @@ function (angular, $, kbn, moment, _, GraphTooltip) {
           _.each(annotations, function(event) {
             if (!types[event.annotation.name]) {
               types[event.annotation.name] = {
+                eventType: event.annotation.name,
                 level: _.keys(types).length + 1,
                 icon: {
                   icon: "icon-chevron-down",

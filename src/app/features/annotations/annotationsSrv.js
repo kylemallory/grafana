@@ -65,17 +65,36 @@ define([
 
     function addAnnotation(options) {
       var title = $sanitize(options.title);
-      var tooltip = "<small><b>" + title + "</b><br/>";
+      var tooltip = ''; // "<small><b>" + title + "</b><br/>";
+      var endTime = options.time;
+      var startTime = options.time;
+      if (options.min) {
+        startTime = options.min;
+      }
+      if (options.max) {
+        endTime = options.max;
+      }
+
       if (options.tags) {
         var tags = $sanitize(options.tags);
         tooltip += '<span class="tag label label-tag">' + (tags || '') + '</span><br/>';
       }
 
       if (timezone === 'browser') {
-        tooltip += '<i>' + moment(options.time).format('YYYY-MM-DD HH:mm:ss') + '</i><br/>';
+        if (endTime) {
+          tooltip += '<i><b>Start:</b> ' + moment(startTime).format('YYYY-MM-DD HH:mm:ss') + '</i> ';
+          tooltip += '<i><b>End:</b> ' + moment(endTime).format('YYYY-MM-DD HH:mm:ss') + '</i><br/>';
+        } else {
+          tooltip += '<i>' + moment(startTime).format('YYYY-MM-DD HH:mm:ss') + '</i><br/>';
+        }
       }
       else {
-        tooltip += '<i>' + moment.utc(options.time).format('YYYY-MM-DD HH:mm:ss') + '</i><br/>';
+        if (endTime) {
+          tooltip += '<i>Start: ' + moment.utc(startTime).format('YYYY-MM-DD HH:mm:ss') + '</i><br/>';
+          tooltip += '<i>End: ' + moment.utc(endTime).format('YYYY-MM-DD HH:mm:ss') + '</i><br/>';
+        } else {
+          tooltip += '<i>' + moment.utc(startTime).format('YYYY-MM-DD HH:mm:ss') + '</i><br/>';
+        }
       }
 
       if (options.text) {
@@ -87,10 +106,10 @@ define([
 
       list.push({
         annotation: options.annotation,
-        min: options.time,
-        max: options.time,
+        min: startTime,
+        max: endTime,
         eventType: options.annotation.name,
-        title: null,
+        title: title,
         description: tooltip,
         score: 1
       });

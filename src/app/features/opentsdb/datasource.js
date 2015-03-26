@@ -22,7 +22,41 @@ function (angular, _, kbn) {
       this.lastLookupType = '';
       this.lastLookupQuery = '';
       this.lastLookupResults = [];
+      this.annotationEditorSrc = 'app/features/opentsdb/partials/annotations.editor.html';
+      this.supportAnnotations = true;
     }
+
+    OpenTSDBDatasource.prototype.annotationQuery = function(annotationOrigin, rangeUnparsed) {
+      var start = convertToTSDBTime(rangeUnparsed.from);
+      var end = convertToTSDBTime(rangeUnparsed.to);
+
+      var queryString = templateSrv.replace(annotationOrigin.query) || '*';
+
+      var options = {
+        method: 'GET',
+        url: this.url + '/api/query',
+        params: {
+          'start': start,
+          'end': end,
+          m: 'sum:'+queryString
+        }
+      };
+
+      return $http(options).then(function(response) {
+        return _.flatten(_.map(response.data, function(dataset) {
+          return _.map(dataset['annotations'], function(annotation) {
+            var event = {
+              annotation: annotationOrigin,
+              min: annotation.startTime * 1000,
+              max: annotation.endTime * 1000,
+              title: annotation.description,
+              text: annotation.notes
+            };
+            return event;
+          });
+        }));
+      });
+    };
 
     // Called once per panel (graph)
     OpenTSDBDatasource.prototype.query = function(options) {
@@ -68,8 +102,24 @@ function (angular, _, kbn) {
               });
               return (_.where([dataset.tags], tags).length > 0);
             });
+            if ((target.length <= 0) && (this.targets.length >= 1)) {
+              target[0] = this.targets[0];
+            }
+
             return transformMetricData(dataset, groupByTags, target[0]);
           }, this));
+          // this is the last point at which we can add 'annotations' to our result (since we don't even get results prior till now)
+          // so, interate through each result entry, looking for and 'annotations' key, and move it out of the result's sub-object
+          /*
+          var annotations = [];
+          _.each(result, function(series, index) {
+            if (series && series.annotations) {
+              annotations = _.union(annotations, series.annotations);
+              delete series['annotations'];
+            }
+          });
+          return { data: result, annotations: annotations };
+          */
           return { data: result };
         }, options));
     };
@@ -77,7 +127,8 @@ function (angular, _, kbn) {
     OpenTSDBDatasource.prototype.performTimeSeriesQuery = function(queries, start, end) {
       var reqBody = {
         start: start,
-        queries: queries
+        queries: queries,
+        globalAnnotations: true
       };
 
       // Relative queries (e.g. last hour) don't include an end time
@@ -285,6 +336,7 @@ function (angular, _, kbn) {
 
     function transformMetricData(md, groupByTags, options) {
       var dps = [],
+          annotations = [],
           metricLabel = null;
 
       metricLabel = createMetricLabel(md.metric, md.tags, groupByTags, options);
@@ -295,7 +347,7 @@ function (angular, _, kbn) {
         dps.push([v, k * 1000]);
       });
 
-      return { target: metricLabel, datapoints: dps };
+      return { target: metricLabel, datapoints: dps, annotations: annotations };
     }
 
     function expandVariables(text, scope) {
